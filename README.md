@@ -28,4 +28,14 @@ $ pip install git+https://github.com/nizhib/pytorch-insightface
 Then run python pytorch-insightface/scripts/convert.py to convert and test pytorch weights.
 
 # Usage
-todo
+You can run script without any parameters:
+```sh
+$ python3 run.py
+```
+
+Also, there are some input parameters available:
+* --image-path: path to image to be processed. Default: ./images/office5.jpg
+* --is-local-weights: whether to use local weights or from remote server. Default: 0
+* --weights-base-path: root path to insightface weights, converted to PyTorch format.
+Actual only if --is-local-weights == 1. Default: pytorch-insightface/resource
+* --show-face: whether to show cropped face or not. Default: 0
