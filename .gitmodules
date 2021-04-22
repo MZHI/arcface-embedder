@@ -1,0 +1,6 @@
+[submodule "pytorch-insightface"]
+	path = pytorch-insightface
+	url = https://github.com/nizhib/pytorch-insightface.git
+[submodule "FaceDetector"]
+	path = FaceDetector
+	url = https://github.com/faciallab/FaceDetector.git
