@@ -21,14 +21,50 @@ img = './images/office5.jpg'
 image = cv2.imread(img)
 boxes, landmarks = detector.detect(image)
 
-# if boxes.shape[0] < 1:
-#     sys.exit(0)
+if boxes.shape[0] < 1:
+    sys.exit(0)
 
-# Then we draw bounding boxes and landmarks on image
-image = cv2.imread(img)
-image = mtcnn.utils.draw.draw_boxes2(image, boxes)
-image = mtcnn.utils.draw.batch_draw_landmarks(image, landmarks)
+# Next: get first face detection
+box = boxes[0, :].cpu().numpy()
 
-# Show the result
-cv2.imshow("Detected image.", image)
-cv2.waitKey(0)
+# crop face and move to tensor
+x_tl, y_tl, x_br, y_br = box[0], box[1], box[2], box[3]
+face = image[y_tl:y_br, x_tl:x_br, :]
+
+# load embedder
+embedder = insightface.iresnet100(pretrained=True)
+
+embedder.to(device)
+embedder.eval()
+
+# check if model on GPU
+# print(next(embedder.parameters()).is_cuda)
+
+mean = [0.5] * 3
+std = [0.5 * 256 / 255] * 3
+preprocess = transforms.Compose([
+    transforms.ToPILImage(),
+    transforms.Resize(112),
+    transforms.CenterCrop(112),
+    transforms.ToTensor(),
+    transforms.Normalize(mean, std)
+])
+
+tensor = preprocess(face)
+tensor = tensor.to(device)
+
+with torch.no_grad():
+    features = embedder(tensor.unsqueeze(0))[0]
+
+print("Features calculation finished. ")
+print(f"Features shape: {features.shape}")
+
+
+# # Then we draw bounding boxes and landmarks on image
+# image = cv2.imread(img)
+# image = mtcnn.utils.draw.draw_boxes2(image, boxes)
+# image = mtcnn.utils.draw.batch_draw_landmarks(image, landmarks)
+#
+# # Show the result
+# cv2.imshow("Detected image.", image)
+# cv2.waitKey(0)
