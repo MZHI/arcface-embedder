@@ -7,6 +7,9 @@ import insightface
 import torch
 from imageio import imread
 from torchvision import transforms
+from utils_local_weights import iresnet34local, iresnet50local, iresnet100local
+
+embedder_path = "pytorch-insightface/resource"
 
 device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
 
@@ -31,8 +34,10 @@ box = boxes[0, :].cpu().numpy()
 x_tl, y_tl, x_br, y_br = box[0], box[1], box[2], box[3]
 face = image[y_tl:y_br, x_tl:x_br, :]
 
-# load embedder
-embedder = insightface.iresnet100(pretrained=True)
+# load embedder from remote urls
+# embedder = insightface.iresnet100(pretrained=True)
+# load embedder from local models
+embedder = iresnet100local(embedder_path)
 
 embedder.to(device)
 embedder.eval()
