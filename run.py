@@ -4,12 +4,8 @@
 import argparse
 import cv2
 import sys
-import mtcnn
-import insightface
-import torch
-from imageio import imread
-from torchvision import transforms
-from utils_local_weights import iresnet34local, iresnet50local, iresnet100local
+from utils.detector import Detector
+from utils.embedder import Embedder
 
 
 def main(args):
@@ -21,64 +17,34 @@ def main(args):
 
     embedder_path = "pytorch-insightface/resource"
 
-    device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
-
-    # First we create pnet, rnet, onet, and load weights from caffe model.
-    pnet, rnet, onet = mtcnn.get_net_caffe('output/converted')
-
-    # Then we create a detector
-    detector = mtcnn.FaceDetector(pnet, rnet, onet, device='cuda:0')
-
     # detect faces from image
     image = cv2.imread(image_path)
-    boxes, landmarks = detector.detect(image)
+
+    det = Detector()
+    boxes, landmarks = det.detect(image)
 
     if boxes.shape[0] < 1:
+        print("Faces not found")
         sys.exit(0)
 
-    # Next: get first face detection
+    # get first face detection
     box = boxes[0, :].cpu().numpy()
 
-    # crop face and move to tensor
+    # crop face
     x_tl, y_tl, x_br, y_br = box[0], box[1], box[2], box[3]
     face = image[y_tl:y_br, x_tl:x_br, :]
-
-    if is_local_weights:
-        # load embedder from local models
-        embedder = iresnet100local(weights_base_path)
-    else:
-        # load embedder from remote urls
-        embedder = insightface.iresnet100(pretrained=True)
-
-    embedder.to(device)
-    embedder.eval()
-
-    # check if model on GPU
-    # print(next(embedder.parameters()).is_cuda)
-
-    mean = [0.5] * 3
-    std = [0.5 * 256 / 255] * 3
-    preprocess = transforms.Compose([
-        transforms.ToPILImage(),
-        transforms.Resize(112),
-        transforms.CenterCrop(112),
-        transforms.ToTensor(),
-        transforms.Normalize(mean, std)
-    ])
-
-    tensor = preprocess(face)
-    tensor = tensor.to(device)
-
-    with torch.no_grad():
-        features = embedder(tensor.unsqueeze(0))[0]
-
-    print("Features calculation finished. ")
-    print(f"Features shape: {features.shape}")
 
     if show_face:
         # show face crop
         cv2.imshow("Detected face.", face)
         cv2.waitKey(0)
+
+    embedder = Embedder(is_local_weights, weights_base_path)
+
+    features = embedder.get_features(face)
+
+    print("Features calculation finished. ")
+    print(f"Features shape: {features.shape}")
 
 
 if __name__ == "__main__":

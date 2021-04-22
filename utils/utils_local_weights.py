@@ -1,3 +1,5 @@
+# -*- coding utf-8 -*-
+
 import torch
 from insightface.iresnet import model_urls, IBasicBlock, IResNet
 
@@ -27,3 +29,7 @@ def iresnet50local(base_path, **kwargs):
 def iresnet100local(base_path, **kwargs):
     return _iresnet_local(base_path, 'iresnet100', IBasicBlock, [3, 13, 30, 3],
                     **kwargs)
+
+
+
+
