@@ -1,5 +1,7 @@
 #!/usr/bin/env python3
+# -*- coding utf-8 -*-
 
+import argparse
 import cv2
 import sys
 import mtcnn
@@ -9,67 +11,87 @@ from imageio import imread
 from torchvision import transforms
 from utils_local_weights import iresnet34local, iresnet50local, iresnet100local
 
-embedder_path = "pytorch-insightface/resource"
 
-device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
+def main(args):
 
-# First we create pnet, rnet, onet, and load weights from caffe model.
-pnet, rnet, onet = mtcnn.get_net_caffe('output/converted')
+    image_path = args.image_path
+    is_local_weights = args.is_local_weights
+    weights_base_path = args.weights_base_path
+    show_face = args.show_face
 
-# Then we create a detector
-detector = mtcnn.FaceDetector(pnet, rnet, onet, device='cuda:0')
+    embedder_path = "pytorch-insightface/resource"
 
-# Then we can detect faces from image
-img = './images/office5.jpg'
-image = cv2.imread(img)
-boxes, landmarks = detector.detect(image)
+    device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
 
-if boxes.shape[0] < 1:
-    sys.exit(0)
+    # First we create pnet, rnet, onet, and load weights from caffe model.
+    pnet, rnet, onet = mtcnn.get_net_caffe('output/converted')
 
-# Next: get first face detection
-box = boxes[0, :].cpu().numpy()
+    # Then we create a detector
+    detector = mtcnn.FaceDetector(pnet, rnet, onet, device='cuda:0')
 
-# crop face and move to tensor
-x_tl, y_tl, x_br, y_br = box[0], box[1], box[2], box[3]
-face = image[y_tl:y_br, x_tl:x_br, :]
+    # detect faces from image
+    image = cv2.imread(image_path)
+    boxes, landmarks = detector.detect(image)
 
-# load embedder from remote urls
-# embedder = insightface.iresnet100(pretrained=True)
-# load embedder from local models
-embedder = iresnet100local(embedder_path)
+    if boxes.shape[0] < 1:
+        sys.exit(0)
 
-embedder.to(device)
-embedder.eval()
+    # Next: get first face detection
+    box = boxes[0, :].cpu().numpy()
 
-# check if model on GPU
-# print(next(embedder.parameters()).is_cuda)
+    # crop face and move to tensor
+    x_tl, y_tl, x_br, y_br = box[0], box[1], box[2], box[3]
+    face = image[y_tl:y_br, x_tl:x_br, :]
 
-mean = [0.5] * 3
-std = [0.5 * 256 / 255] * 3
-preprocess = transforms.Compose([
-    transforms.ToPILImage(),
-    transforms.Resize(112),
-    transforms.CenterCrop(112),
-    transforms.ToTensor(),
-    transforms.Normalize(mean, std)
-])
+    if is_local_weights:
+        # load embedder from local models
+        embedder = iresnet100local(weights_base_path)
+    else:
+        # load embedder from remote urls
+        embedder = insightface.iresnet100(pretrained=True)
 
-tensor = preprocess(face)
-tensor = tensor.to(device)
+    embedder.to(device)
+    embedder.eval()
 
-with torch.no_grad():
-    features = embedder(tensor.unsqueeze(0))[0]
+    # check if model on GPU
+    # print(next(embedder.parameters()).is_cuda)
 
-print("Features calculation finished. ")
-print(f"Features shape: {features.shape}")
+    mean = [0.5] * 3
+    std = [0.5 * 256 / 255] * 3
+    preprocess = transforms.Compose([
+        transforms.ToPILImage(),
+        transforms.Resize(112),
+        transforms.CenterCrop(112),
+        transforms.ToTensor(),
+        transforms.Normalize(mean, std)
+    ])
+
+    tensor = preprocess(face)
+    tensor = tensor.to(device)
+
+    with torch.no_grad():
+        features = embedder(tensor.unsqueeze(0))[0]
+
+    print("Features calculation finished. ")
+    print(f"Features shape: {features.shape}")
+
+    if show_face:
+        # show face crop
+        cv2.imshow("Detected face.", face)
+        cv2.waitKey(0)
 
 
-# # Then we draw bounding boxes and landmarks on image
-# image = cv2.imread(img)
-# image = mtcnn.utils.draw.draw_boxes2(image, boxes)
-# image = mtcnn.utils.draw.batch_draw_landmarks(image, landmarks)
-#
-# # Show the result
-# cv2.imshow("Detected image.", image)
-# cv2.waitKey(0)
+if __name__ == "__main__":
+    parser = argparse.ArgumentParser('''Face detector and embedder''')
+
+    parser.add_argument('--image-path', type=str, default="./images/office5.jpg",
+                        help="Path to image to be processed")
+    parser.add_argument('--is-local-weights', type=int, default=0,
+                        help="Whether to use local weights or from remote server")
+    parser.add_argument('--weights-base-path', type=str, default="pytorch-insightface/resource",
+                        help="Root path to insightface weights, converted to PyTorch format. "
+                             "Actual only if --is-local-weights == 1")
+    parser.add_argument('--show-face', type=int, default=0,
+                        help="Whether to show cropped face or not")
+    args = parser.parse_args()
+    main(args)
