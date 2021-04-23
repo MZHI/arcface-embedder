@@ -21,6 +21,7 @@ def main(args):
     weights_base_path = args.weights_base_path
     show_face = args.show_face
     align_torch = args.align_torch
+    arch = args.arch
 
     # detect faces from image
     image = cv2.imread(image_path)
@@ -57,7 +58,7 @@ def main(args):
         cv2.waitKey(0)
 
     # create embedder and get features
-    embedder = Embedder(is_local_weights, weights_base_path)
+    embedder = Embedder(is_local_weights, arch, weights_base_path)
 
     features = embedder.get_features(face_aligned)
     # print(features)
@@ -80,5 +81,7 @@ if __name__ == "__main__":
                         help="Whether to show cropped face or not. Default: 0")
     parser.add_argument('--align-torch', type=int, default=1,
                         help="Whether to use torch or numpy realization of alignment. Default: 1")
+    parser.add_argument('--arch', type=str, default="iresnet100",
+                        help="Architecture of embedder. [iresnet34/iresnet50/iresnet100]. Default: iresnet100")
     args = parser.parse_args()
     main(args)

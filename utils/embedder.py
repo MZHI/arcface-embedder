@@ -3,19 +3,26 @@
 import torch
 import insightface
 from torchvision import transforms
-from utils.utils_local_weights import iresnet100local, iresnet34local, iresnet50local
+from utils.local_weights import iresnet_local
 
 
 class Embedder():
-    def __init__(self, is_local, weights_base_path=None):
+    def __init__(self, is_local, arch="iresnet100", weights_base_path=None):
         self.__device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
 
         if is_local:
-            # load embedder from local models
-            self.__embedder = iresnet100local(weights_base_path)
+            # load weights from locally
+            self.__embedder = iresnet_local(weights_base_path, arch)
         else:
-            # load embedder from remote urls
-            self.__embedder = insightface.iresnet100(pretrained=True)
+            # load weights from remote urls
+            if arch == "iresnet34":
+                self.__embedder = insightface.iresnet34(pretrained=True)
+            elif arch == "iresnet50":
+                self.__embedder = insightface.iresnet50(pretrained=True)
+            elif arch == "iresnet100":
+                self.__embedder = insightface.iresnet100(pretrained=True)
+            else:
+                raise ValueError("Invalid arch type for embedder")
 
         self.__embedder.to(self.__device)
         self.__embedder.eval()
