@@ -1,5 +1,5 @@
 # arcface-embedder
-Simple script for face detection, alignment and getting embeddings using pretrain models from [insightface project](https://github.com/deepinsight/insightface.git), converted to PyTorch format using [this project](https://github.com/nizhib/pytorch-insightface.git) and using detector from [MTCNN](https://github.com/faciallab/FaceDetector.git) project. Face alignment implemented using pytorch Tensor computing, based on original [insightface numpy realization](https://github.com/deepinsight/insightface/blob/master/recognition/common/face_align.py)
+Simple script for face detection, alignment and getting embeddings using pretrain models from [insightface project](https://github.com/deepinsight/insightface.git), converted to PyTorch format using [pytorch-insightface project](https://github.com/nizhib/pytorch-insightface.git) and using detector from [MTCNN](https://github.com/faciallab/FaceDetector.git) project. Face alignment implemented using pytorch Tensor computing, based on original [insightface numpy realization](https://github.com/deepinsight/insightface/blob/master/recognition/common/face_align.py)
 
 
 # Install/build dependencies (FAceDetector and pytorch-insightface)
