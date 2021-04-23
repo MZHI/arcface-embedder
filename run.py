@@ -4,18 +4,23 @@
 import argparse
 import cv2
 import sys
+import torch
+import numpy as np
 from utils.detector import Detector
 from utils.embedder import Embedder
+from utils.face_align_numpy import align_face_np
+from utils.face_align_torch import align_face_torch
 
 
 def main(args):
+
+    device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
 
     image_path = args.image_path
     is_local_weights = args.is_local_weights
     weights_base_path = args.weights_base_path
     show_face = args.show_face
-
-    embedder_path = "pytorch-insightface/resource"
+    align_torch = args.align_torch
 
     # detect faces from image
     image = cv2.imread(image_path)
@@ -27,21 +32,35 @@ def main(args):
         print("Faces not found")
         sys.exit(0)
 
-    # get first face detection
-    box = boxes[0, :].cpu().numpy()
+    box = boxes[0, :]
+    lmk = landmarks[0, :, :]
 
-    # crop face
-    x_tl, y_tl, x_br, y_br = box[0], box[1], box[2], box[3]
-    face = image[y_tl:y_br, x_tl:x_br, :]
+    if align_torch:
+        face_aligned, _ = align_face_torch(image, lmk, box, device)
+    else:
+        face_aligned, _ = align_face_np(image, lmk, box)
 
     if show_face:
-        # show face crop
-        cv2.imshow("Detected face.", face)
+        # show detected face
+        x_tl, y_tl, x_br, y_br = box[0], box[1], box[2], box[3]
+        face = image[y_tl:y_br, x_tl:x_br, :]
+        cv2.imshow("Detected face", face)
+
+        if align_torch:
+            face_aln = face_aligned.cpu().numpy().squeeze().copy()
+            face_aln = (face_aln * 255).astype(np.uint8)
+            face_aln = face_aln.transpose(1, 2, 0)
+        else:
+            face_aln = face_aligned.copy()
+
+        cv2.imshow("Aligned face", face_aln)
         cv2.waitKey(0)
 
+    # create embedder and get features
     embedder = Embedder(is_local_weights, weights_base_path)
 
-    features = embedder.get_features(face)
+    features = embedder.get_features(face_aligned)
+    # print(features)
 
     print("Features calculation finished. ")
     print(f"Features shape: {features.shape}")
@@ -51,13 +70,15 @@ if __name__ == "__main__":
     parser = argparse.ArgumentParser('''Face detector and embedder''')
 
     parser.add_argument('--image-path', type=str, default="./images/office5.jpg",
-                        help="Path to image to be processed")
+                        help="Path to image to be processed. Default: ./images/office5.jpg")
     parser.add_argument('--is-local-weights', type=int, default=0,
-                        help="Whether to use local weights or from remote server")
+                        help="Whether to use local weights or from remote server. Default: 0")
     parser.add_argument('--weights-base-path', type=str, default="pytorch-insightface/resource",
                         help="Root path to insightface weights, converted to PyTorch format. "
-                             "Actual only if --is-local-weights == 1")
+                             "Actual only if --is-local-weights == 1. Default: pytorch-insigntface/resource")
     parser.add_argument('--show-face', type=int, default=0,
-                        help="Whether to show cropped face or not")
+                        help="Whether to show cropped face or not. Default: 0")
+    parser.add_argument('--align-torch', type=int, default=1,
+                        help="Whether to use torch or numpy realization of alignment. Default: 1")
     args = parser.parse_args()
     main(args)

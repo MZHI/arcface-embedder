@@ -3,7 +3,7 @@
 import torch
 import insightface
 from torchvision import transforms
-from utils.utils_local_weights import  iresnet100local, iresnet34local, iresnet50local
+from utils.utils_local_weights import iresnet100local, iresnet34local, iresnet50local
 
 
 class Embedder():
@@ -25,20 +25,25 @@ class Embedder():
 
         mean = [0.5] * 3
         std = [0.5 * 256 / 255] * 3
-        self.__preprocess = transforms.Compose([
+        self.__preprocess_basic = transforms.Compose([
             transforms.ToPILImage(),
             transforms.Resize(112),
             transforms.CenterCrop(112),
             transforms.ToTensor(),
-            transforms.Normalize(mean, std)
         ])
+        self.__normalize = transforms.Normalize(mean, std)
 
     def get_features(self, face):
-        tensor = self.__preprocess(face)
-        tensor = tensor.to(self.__device)
+        if not isinstance(face, torch.Tensor):
+            face = self.__preprocess_basic(face)
+        face = self.__normalize(face)
+        face = face.to(self.__device)
 
         with torch.no_grad():
-            features = self.__embedder(tensor.unsqueeze(0))[0]
+            if len(face.shape) == 3:
+                features = self.__embedder(face.unsqueeze(0))[0]
+            else:
+                features = self.__embedder(face)[0]
         return features
 
 

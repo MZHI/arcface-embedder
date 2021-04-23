@@ -2,6 +2,7 @@
 
 import mtcnn
 
+
 class Detector:
     def __init__(self):
         # First we create pnet, rnet, onet, and load weights from caffe model.
