@@ -81,59 +81,80 @@ def similarity_estimate(src, dst, estimate_scale=True):
     return T
 
 
-def estimate_norm_torch(lmk, image_size=112):
-    assert lmk.shape == (5, 2)
+def estimate_norm_torch(lmks, image_size=112):
+    l_min_M = []
+    l_min_idxs = []
+    for j in range(lmks.shape[0]):
+        lmk = lmks[j, :, :]
+        print(f"current lmk shape: {lmk.shape}")
+        lmk_tran = torch.cat((lmk, torch.ones(5, 1)), dim=1)
+        min_M = []
+        min_index = []
+        min_error = float('inf')
+        for i in np.arange(src.shape[0]):
+            params = similarity_estimate(lmk, src[i])
+            M = params[:2, :]
+            results = torch.matmul(M, lmk_tran.t())
+            results = results.t()
+            error = torch.sum(torch.sqrt(torch.sum(torch.square(results - src[i]), dim=1)))
+            if error < min_error:
+                min_error = error
+                min_M = M
+                min_index = i
+        l_min_M.append(min_M)
+        l_min_idxs.append(min_index)
+    M = torch.stack(l_min_M, dim=0)
+    return M, l_min_idxs
 
-    lmk_tran = torch.cat((lmk, torch.ones(5, 1)), dim=1)
-    min_M = []
-    min_index = []
-    min_error = float('inf')
-    for i in np.arange(src.shape[0]):
-        params = similarity_estimate(lmk, src[i])
-        M = params[:2, :]
-        results = torch.matmul(M, lmk_tran.t())
-        results = results.t()
-        error = torch.sum(torch.sqrt(torch.sum(torch.square(results - src[i]), dim=1)))
-        if error < min_error:
-            min_error = error
-            min_M = M
-            min_index = i
-    return min_M, min_index
 
-
-def norm_crop_torch(img, landmark, device, image_size=112):
-    M, pose_index = estimate_norm_torch(landmark)
+def norm_crop_torch(faces_tensor, lmks_tensor, device, image_size=112):
+    assert len(faces_tensor.shape) == 4
+    assert len(lmks_tensor.shape) == 3
+    M, pose_indexes = estimate_norm_torch(lmks_tensor)
     M = M.to(device)
-    warped = warp_affine(img.unsqueeze(0), M.unsqueeze(0), (image_size, image_size))
-    return warped, pose_index
+    faces_tensor = faces_tensor.to(device)
+    warped = warp_affine(faces_tensor, M, (image_size, image_size))
+    return warped, pose_indexes
 
 
-def align_face_torch(img_orig, lmk, bbox, device, image_size=112):
-    lmk = lmk.cpu()
-    bbox = bbox.cpu()
+def align_face_torch_batch(img_orig, landmarks, bboxes, device, image_size=112):
+    """
+    Face alignment using [N] batches
+    :param img_orig: original image, numpy array
+    :param landmarks: tensor [N*5*2]
+    :param bboxes: bounding boxes of faces, [N*4]
+    :param device: name of device
+    :param image_size: size of image, to which each crop wil be resized
+    :return:
+    """
+    lmks = landmarks.cpu()
+    bboxes = bboxes.cpu()
+    batch_size = lmks.shape[0]
 
-    x_tl, y_tl, x_br, y_br = bbox[0], bbox[1], bbox[2], bbox[3]
+    # vector of horizontal and vertical scale coefficients for [N] bboxes
+    k_h_tensor = float(image_size) / (bboxes[:, 2] - bboxes[:, 0])
+    k_v_tensor = float(image_size) / (bboxes[:, 3] - bboxes[:, 1])
 
-    lmk[:, 0] = lmk[:, 0] - x_tl
-    lmk[:, 1] = lmk[:, 1] - y_tl
-
-    k_horizontal = float(image_size) / (x_br - x_tl)
-    k_vertical = float(image_size) / (y_br - y_tl)
+    lmks = lmks - torch.cat([bboxes[:, :2]]*5, dim=1).view(-1, 5, 2)
 
     # scale landmarks and move to device
-    lmk = lmk * torch.cat(5*[torch.Tensor([k_horizontal, k_vertical]).unsqueeze(0)]).float()
+    coefs_tensor = torch.cat([torch.stack([k_h_tensor, k_v_tensor], dim=1)] * 5, dim=1).view(-1, 5, 2)
+    lmks = lmks * coefs_tensor
 
-    # get crop of face, resize to [image_size] and move to Tensor
-    face_orig = img_orig[y_tl:y_br, x_tl:x_br, :]
-    # resize and move to Tensor
+    # create transformations
     resize_transforms = transforms.Compose([
         transforms.ToPILImage(),
         transforms.Resize((112, 112)),
         transforms.ToTensor()
     ])
 
-    face_tensor = resize_transforms(face_orig)
-    face_tensor = face_tensor.to(device)
-    face_tensor, pose_idx = norm_crop_torch(face_tensor, lmk, device)
+    faces_crops = []
+    for i in range(batch_size):
+        # get crop of face, resize to [image_size] and move to Tensor
+        faces_crops.append(img_orig[bboxes[i, 1]:bboxes[i, 3], bboxes[i, 0]:bboxes[i, 2], :])
+        faces_crops[i] = resize_transforms(faces_crops[i])
 
-    return face_tensor, pose_idx
+    # create tensor of size [N*3*image_size*image_size]
+    faces_tensor = torch.stack(faces_crops, dim=0)
+    faces_tensor, pose_idx = norm_crop_torch(faces_tensor, lmks, device)
+    return faces_tensor, pose_idx

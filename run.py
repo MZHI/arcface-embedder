@@ -9,7 +9,7 @@ import numpy as np
 from utils.detector import Detector
 from utils.embedder import Embedder
 from utils.face_align_numpy import align_face_np
-from utils.face_align_torch import align_face_torch
+from utils.face_align_torch import align_face_torch_batch
 
 
 def main(args):
@@ -37,9 +37,9 @@ def main(args):
     lmk = landmarks[0, :, :]
 
     if align_torch:
-        face_aligned, _ = align_face_torch(image, lmk, box, device)
+        faces_aligned, _ = align_face_torch_batch(image, landmarks, boxes, device)
     else:
-        face_aligned, _ = align_face_np(image, lmk, box)
+        faces_aligned, _ = align_face_np(image, lmk, box)
 
     if show_face:
         # show detected face
@@ -48,11 +48,11 @@ def main(args):
         cv2.imshow("Detected face", face)
 
         if align_torch:
-            face_aln = face_aligned.cpu().numpy().squeeze().copy()
+            face_aln = faces_aligned.cpu().numpy()[0, :, :, :].squeeze().copy()
             face_aln = (face_aln * 255).astype(np.uint8)
             face_aln = face_aln.transpose(1, 2, 0)
         else:
-            face_aln = face_aligned.copy()
+            face_aln = faces_aligned[0, :, :, :].copy()
 
         cv2.imshow("Aligned face", face_aln)
         cv2.waitKey(0)
@@ -60,7 +60,7 @@ def main(args):
     # create embedder and get features
     embedder = Embedder(is_local_weights, arch, weights_base_path)
 
-    features = embedder.get_features(face_aligned)
+    features = embedder.get_features(faces_aligned)
     # print(features)
 
     print("Features calculation finished. ")
