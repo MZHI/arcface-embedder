@@ -24,6 +24,12 @@ src5 = torch.Tensor([[54.796, 49.990], [60.771, 50.115], [76.673, 69.007],
                  [55.388, 89.702], [61.257, 89.050]]).float()
 
 src = torch.stack((src1, src2, src3, src4, src5), dim=0)
+src_map = {112: src, 224: src * 2}
+
+arcface_src = torch.Tensor(
+    [[38.2946, 51.6963], [73.5318, 51.5014], [56.0252, 71.7366],
+     [41.5493, 92.3655], [70.7299, 92.2041]]).float()
+arcface_src = arcface_src.unsqueeze(0)
 
 
 # Estimate N-D similarity transformation without scaling
@@ -81,7 +87,7 @@ def similarity_estimate(src, dst, estimate_scale=True):
     return T
 
 
-def estimate_norm_torch(lmks, image_size=112):
+def estimate_norm_torch(lmks, image_size=112, mode='arcface'):
     l_min_M = []
     l_min_idxs = []
     for j in range(lmks.shape[0]):
@@ -92,6 +98,11 @@ def estimate_norm_torch(lmks, image_size=112):
         min_index = []
         min_error = float('inf')
         for i in np.arange(src.shape[0]):
+            if mode == 'arcface':
+                assert image_size == 112
+                src = arcface_src
+            else:
+                src = src_map[image_size]
             params = similarity_estimate(lmk, src[i])
             M = params[:2, :]
             results = torch.matmul(M, lmk_tran.t())
@@ -119,13 +130,14 @@ def norm_crop_torch(faces_tensor, lmks_tensor, device, image_size=112):
 
 def align_face_torch_batch(img_orig, landmarks, bboxes, device, image_size=112):
     """
-    Face alignment using [N] batches
+    Face alignment for [N] faces
     :param img_orig: original image, numpy array
-    :param landmarks: tensor [N*5*2]
-    :param bboxes: bounding boxes of faces, [N*4]
+    :param landmarks: tensor [N x 5 x 2]
+    :param bboxes: bounding boxes of faces, [N x 4]
     :param device: name of device
     :param image_size: size of image, to which each crop wil be resized
-    :return:
+    :return: faces_tensor: tensor of aligned faces, [N x 3 x image_size x image_size]
+    :return: pose_idxs: list of pose indexes
     """
     lmks = landmarks.cpu()
     bboxes = bboxes.cpu()
@@ -156,5 +168,5 @@ def align_face_torch_batch(img_orig, landmarks, bboxes, device, image_size=112):
 
     # create tensor of size [N*3*image_size*image_size]
     faces_tensor = torch.stack(faces_crops, dim=0)
-    faces_tensor, pose_idx = norm_crop_torch(faces_tensor, lmks, device)
-    return faces_tensor, pose_idx
+    faces_tensor, pose_idxs = norm_crop_torch(faces_tensor, lmks, device)
+    return faces_tensor, pose_idxs

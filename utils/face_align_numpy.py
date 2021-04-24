@@ -63,31 +63,49 @@ def estimate_norm(lmk, image_size=112, mode='arcface'):
     return min_M, min_index
 
 
-def norm_crop(img, landmark, image_size=112, mode='arcface'):
-    M, pose_index = estimate_norm(landmark, image_size, mode)
-    warped = cv2.warpAffine(img, M, (image_size, image_size), borderValue=0.0)
-    return warped, pose_index
+def norm_crop(faces, landmarks, image_size=112, mode='arcface'):
+    num_faces = len(faces)
+    l_M = []
+    l_pose_idxs = []
+    l_warped = []
+    for i in range(num_faces):
+        M, pose_index = estimate_norm(landmarks[i, :, :], image_size, mode)
+        l_M.append(M)
+        l_pose_idxs.append(pose_index)
+        l_warped.append(cv2.warpAffine(faces[i, :, :, :], M, (image_size, image_size), borderValue=0.0))
+    return l_warped, l_pose_idxs
 
 
-def align_face_np(img_orig, lmk, bbox, image_size=112):
-    lmk = lmk.cpu().numpy().copy()
-    bbox = bbox.cpu().numpy().copy()
+def align_face_np(img_orig, landmarks, bboxes, image_size=112):
+    """
+        Face alignment for [N] faces
+        :param img_orig: original image, numpy array
+        :param landmarks: tensor [N*5*2]
+        :param bboxes: bounding boxes of faces, [N*4]
+        :param image_size: size of image, to which each crop wil be resized
+        :return:
+        """
+    lmks = landmarks.cpu().numpy().copy()
+    bboxes = bboxes.cpu().numpy().copy()
+    batch_size = lmks.shape[0]
 
-    x_tl, y_tl, x_br, y_br = bbox[0], bbox[1], bbox[2], bbox[3]
+    # vector of horizontal and vertical scale coefficients for [N] bboxes
+    k_horizontal = float(image_size) / (bboxes[:, 2] - bboxes[:0])
+    k_vertical = float(image_size) / (bboxes[:, 3] - bboxes[:, 1])
 
-    lmk[:, 0] = lmk[:, 0] - x_tl
-    lmk[:, 1] = lmk[:, 1] - y_tl
-
-    k_horizontal = float(image_size) / (x_br - x_tl)
-    k_vertical = float(image_size) / (y_br - y_tl)
+    lmks = lmks - np.hstack([bboxes[:, :2] for i in range(5)]).reshape(-1, 5, 2)
 
     # scale landmarks
-    lmk = lmk * np.vstack([np.array([k_horizontal, k_vertical]) for v in range(5)])
+    m = np.hstack([k_horizontal.reshape(-1, 1), k_vertical.reshape(-1, 1)])
+    coefs = np.hstack([m for i in range(5)]).reshape(-1, 5, 2)
+    lmks = lmks * coefs
 
-    # get crop of face, resize to [image_size]
-    face_orig = img_orig[y_tl:y_br, x_tl:x_br, :]
-    face_resized = cv2.resize(face_orig, (image_size, image_size))
+    faces_crops = []
+    for i in range(batch_size):
+        # get crop of face, resize to [image_size]
+        faces_crops.append(img_orig[bboxes[i, 1]:bboxes[i, 3], bboxes[i, 0]:bboxes[i, 2], :])
+        faces_crops[i] = cv2.resize(faces_crops[i], (image_size, image_size))
 
-    face_aligned, pose_idx = norm_crop(face_resized, lmk)
+    faces_aligned, pose_idxs = norm_crop(faces_crops, lmks)
 
-    return face_aligned, pose_idx
+    return faces_aligned, pose_idxs
