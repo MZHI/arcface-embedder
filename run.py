@@ -41,19 +41,20 @@ def main(args):
 
     if show_face:
         # show detected face
-        x_tl, y_tl, x_br, y_br = boxes[0, 0], boxes[0, 1], boxes[0, 2], boxes[0, 3]
+        idx = 0
+        x_tl, y_tl, x_br, y_br = boxes[idx, 0], boxes[idx, 1], boxes[idx, 2], boxes[idx, 3]
         face = image[y_tl:y_br, x_tl:x_br, :]
         cv2.imshow("Detected face", face)
-        # cv2.imwrite("detected_face.jpg", face)
 
         if align_torch:
-            face_aln = faces_aligned.cpu().numpy()[0, :, :, :].squeeze().copy()
+            face_aln = faces_aligned.cpu().numpy()[idx, :, :, :].squeeze().copy()
+            print(face_aln.min())
+            print(face_aln.max())
             face_aln = (face_aln * 255).astype(np.uint8)
             face_aln = face_aln.transpose(1, 2, 0)
         else:
-            face_aln = faces_aligned[0].squeeze().copy().astype(np.uint8)
+            face_aln = faces_aligned[idx].squeeze().copy().astype(np.uint8)
 
-        # cv2.imwrite("align_numpy.jpg", face_aln)
         cv2.imshow("Aligned face", face_aln)
         cv2.waitKey(0)
 
@@ -61,6 +62,7 @@ def main(args):
     embedder = Embedder(is_local_weights, arch, weights_base_path)
 
     features = embedder.get_features(faces_aligned)
+    # print(features[idx, :])
 
     print("Features calculation finished. ")
     print(f"Features shape: {features.shape}")

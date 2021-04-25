@@ -40,6 +40,7 @@ arcface_src = np.expand_dims(arcface_src, axis=0)
 def estimate_norm(lmk, image_size=112, mode='arcface'):
     assert lmk.shape == (5, 2)
     tform = trans.SimilarityTransform()
+
     lmk_tran = np.insert(lmk, 2, values=np.ones(5), axis=1)
     min_M = []
     min_index = []

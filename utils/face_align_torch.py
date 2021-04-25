@@ -167,7 +167,7 @@ def align_face_torch_batch(img_orig, landmarks, bboxes, device, image_size=112):
         faces_crops.append(img_orig[bboxes[i, 1]:bboxes[i, 3], bboxes[i, 0]:bboxes[i, 2], :])
         faces_crops[i] = resize_transforms(faces_crops[i])
 
-    # create tensor of size [N*3*image_size*image_size]
+    # create tensor of size [N x 3 x image_size x image_size]
     faces_tensor = torch.stack(faces_crops, dim=0)
     faces_tensor, pose_idxs = norm_crop_torch(faces_tensor, lmks, device)
     return faces_tensor, pose_idxs
