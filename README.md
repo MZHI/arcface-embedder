@@ -61,9 +61,9 @@ detected original face | aligned image 1 | aligned image 2 | L1-norm
 ![Person 1 face orig](/images/out/per1_det.jpg) | ![Person 1 align torch](/images/out/per1_torch.jpg) | ![Person 1 align numpy](/images/out/per1_numpy.jpg) | 2.4723
 ![Person 2 face orig](/images/out/per2_det.jpg) | ![Person 2 align torch](/images/out/per2_torch.jpg) | ![Person 2 align numpy](/images/out/per2_numpy.jpg) | 2.3088
 ![Person 3 face orig](/images/out/per3_det.jpg) | ![person 3 align torch](/images/out/per3_torch.jpg) | ![Person 2 align numpy](/images/out/per3_numpy.jpg) | 1.5965
- | ![Person 1 align torch](/images/out/per1_torch.jpg) | ![Person 2 align torch](/images/out/per2_torch.jpg) | 29.0398
- | ![Person 1 align torch](/images/out/per1_torch.jpg) | ![Person 3 align torch](/images/out/per3_torch.jpg) | 23.1007
- | ![Person 2 align torch](/images/out/per2_torch.jpg) | ![Person 3 align torch](/images/out/per3_torch.jpg) | 23.1007
+--- | ![Person 1 align torch](/images/out/per1_torch.jpg) | ![Person 2 align torch](/images/out/per2_torch.jpg) | 29.0398
+--- | ![Person 1 align torch](/images/out/per1_torch.jpg) | ![Person 3 align torch](/images/out/per3_torch.jpg) | 23.1007
+--- | ![Person 2 align torch](/images/out/per2_torch.jpg) | ![Person 3 align torch](/images/out/per3_torch.jpg) | 23.1007
  
  
 
