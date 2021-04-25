@@ -90,19 +90,20 @@ def similarity_estimate(src, dst, estimate_scale=True):
 def estimate_norm_torch(lmks, image_size=112, mode='arcface'):
     l_min_M = []
     l_min_idxs = []
+
+    if mode == 'arcface':
+        assert image_size == 112
+        src = arcface_src
+    else:
+        src = src_map[image_size]
+
     for j in range(lmks.shape[0]):
         lmk = lmks[j, :, :]
-        print(f"current lmk shape: {lmk.shape}")
         lmk_tran = torch.cat((lmk, torch.ones(5, 1)), dim=1)
         min_M = []
         min_index = []
         min_error = float('inf')
-        for i in np.arange(src.shape[0]):
-            if mode == 'arcface':
-                assert image_size == 112
-                src = arcface_src
-            else:
-                src = src_map[image_size]
+        for i in range(src.shape[0]):
             params = similarity_estimate(lmk, src[i])
             M = params[:2, :]
             results = torch.matmul(M, lmk_tran.t())

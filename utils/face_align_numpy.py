@@ -55,7 +55,6 @@ def estimate_norm(lmk, image_size=112, mode='arcface'):
         results = np.dot(M, lmk_tran.T)
         results = results.T
         error = np.sum(np.sqrt(np.sum((results - src[i])**2, axis=1)))
-        #         print(error)
         if error < min_error:
             min_error = error
             min_M = M
@@ -72,7 +71,7 @@ def norm_crop(faces, landmarks, image_size=112, mode='arcface'):
         M, pose_index = estimate_norm(landmarks[i, :, :], image_size, mode)
         l_M.append(M)
         l_pose_idxs.append(pose_index)
-        l_warped.append(cv2.warpAffine(faces[i, :, :, :], M, (image_size, image_size), borderValue=0.0))
+        l_warped.append(cv2.warpAffine(faces[i], M, (image_size, image_size), borderValue=0.0))
     return l_warped, l_pose_idxs
 
 
@@ -90,7 +89,7 @@ def align_face_np(img_orig, landmarks, bboxes, image_size=112):
     batch_size = lmks.shape[0]
 
     # vector of horizontal and vertical scale coefficients for [N] bboxes
-    k_horizontal = float(image_size) / (bboxes[:, 2] - bboxes[:0])
+    k_horizontal = float(image_size) / (bboxes[:, 2] - bboxes[:, 0])
     k_vertical = float(image_size) / (bboxes[:, 3] - bboxes[:, 1])
 
     lmks = lmks - np.hstack([bboxes[:, :2] for i in range(5)]).reshape(-1, 5, 2)

@@ -28,32 +28,32 @@ def main(args):
 
     det = Detector()
     boxes, landmarks = det.detect(image)
+    print(f"Found faces: {boxes.shape[0]}")
 
     if boxes.shape[0] < 1:
         print("Faces not found")
         sys.exit(0)
 
-    box = boxes[0, :]
-    lmk = landmarks[0, :, :]
-
     if align_torch:
         faces_aligned, _ = align_face_torch_batch(image, landmarks, boxes, device)
     else:
-        faces_aligned, _ = align_face_np(image, lmk, box)
+        faces_aligned, _ = align_face_np(image, landmarks, boxes)
 
     if show_face:
         # show detected face
-        x_tl, y_tl, x_br, y_br = box[0], box[1], box[2], box[3]
+        x_tl, y_tl, x_br, y_br = boxes[0, 0], boxes[0, 1], boxes[0, 2], boxes[0, 3]
         face = image[y_tl:y_br, x_tl:x_br, :]
         cv2.imshow("Detected face", face)
+        # cv2.imwrite("detected_face.jpg", face)
 
         if align_torch:
             face_aln = faces_aligned.cpu().numpy()[0, :, :, :].squeeze().copy()
             face_aln = (face_aln * 255).astype(np.uint8)
             face_aln = face_aln.transpose(1, 2, 0)
         else:
-            face_aln = faces_aligned[0, :, :, :].copy()
+            face_aln = faces_aligned[0].squeeze().copy().astype(np.uint8)
 
+        # cv2.imwrite("align_numpy.jpg", face_aln)
         cv2.imshow("Aligned face", face_aln)
         cv2.waitKey(0)
 
@@ -61,7 +61,6 @@ def main(args):
     embedder = Embedder(is_local_weights, arch, weights_base_path)
 
     features = embedder.get_features(faces_aligned)
-    # print(features)
 
     print("Features calculation finished. ")
     print(f"Features shape: {features.shape}")
