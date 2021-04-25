@@ -34,6 +34,11 @@ You can just run script without any parameters, all available input parameters w
 $ python3 run.py
 ```
 
+For running with specific image path:
+```sh
+$ python3 run.py --image-path [image name]
+```
+
 # Options
 There are some input parameters available:
 * --image-path: path to image to be processed. Default: ./images/office5.jpg
@@ -44,3 +49,13 @@ Actual only if --is-local-weights == 1. Default: pytorch-insightface/resource
 * --align-torch: whether to use torch or numpy realization for face alignment. Default: 1
 * --arch: architecture of embedder: iresnet34|iresnet50|iresnet100. Default: iresnet100
 
+# Some examples of aligning and dsit between features
+For comparing L1 norm was used: 
+```python
+numpy.linalg.norm(v1-v2), 1)
+```
+where `v1` and `v2` are feature vectors of size 512
+
+detected original face | aligned image 1 | aligned image 2 | L1-norm
+-----------------------|-----------------|-----------------|----------
+![Detected face](/images/out/detected_face.jpg) | ![Aligned face pytorch](/images/out/align_torch.jpg) | ![Aligned face numpy](/images/out/align_numpy.jpg) | 2.4723
