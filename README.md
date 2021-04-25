@@ -52,7 +52,7 @@ Actual only if --is-local-weights == 1. Default: pytorch-insightface/resource
 # Some examples of aligning and dsit between features
 For comparing L1 norm was used: 
 ```python
-numpy.linalg.norm(v1-v2), 1)
+numpy.linalg.norm(v1-v2, 1)
 ```
 where `v1` and `v2` are feature vectors of size 512
 
