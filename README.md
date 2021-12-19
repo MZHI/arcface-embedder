@@ -49,8 +49,8 @@ Actual only if --is-local-weights == 1. Default: pytorch-insightface/resource
 * --align-torch: whether to use torch or numpy realization for face alignment. Default: 1
 * --arch: architecture of embedder: iresnet34|iresnet50|iresnet100. Default: iresnet100
 
-# Some examples of aligning and dsit between features
-For comparing L1 norm was used: 
+# Some examples of aligning and distance between features
+For comparing two vectors of features L1 norm was used: 
 ```python
 numpy.linalg.norm(v1-v2, 1)
 ```
